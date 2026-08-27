@@ -1,0 +1,30 @@
+# Data — never commit. GH Archive hours are 20-100MB each and GitHub rejects >100MB.
+data/
+*.json.gz
+*.parquet
+*.duckdb
+*.duckdb.wal
+
+# Secrets
+.env
+.databrickscfg
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+profiles.yml
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
