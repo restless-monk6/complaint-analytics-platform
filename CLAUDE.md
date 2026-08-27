@@ -370,7 +370,10 @@ before ingesting broadly.
 - [x] **Dataset chosen: CFPB Consumer Complaints**, profiled at survey depth
 - [x] Access path verified: CSV export, not JSON paging
 - [x] Publication lag measured - the two clocks above
-- [ ] Repo scaffold rebuilt by hand (in progress - see below)
+- [ ] Repo scaffold rebuilt by hand. In progress: lesson 2 (the API client),
+      steps 1-3 done - endpoints explored, the two count fields
+      distinguished, CSV export confirmed as the pull path. Next: write
+      `src/ingestion/cfpb_client.py`. Nothing written yet.
 - [ ] Full profile: company name normalization across full history
 - [ ] Databricks workspace + Unity Catalog dev/prod
 - [ ] Databricks Connect working end to end
