@@ -18,7 +18,14 @@ favor what is legible and defensible in an interview over what is clever.
 
 ## Owner context
 
-- Works on Windows, PowerShell. Paths are `C:\projects\github-activity-platform`.
+- Works on Windows, PowerShell. The live repo is
+  `C:\projects\complaint-analytics-platform`. Sessions still open in
+  `C:\projects\github-activity-platform`, which is the abandoned GH Archive
+  attempt - do not work in it.
+- `python` on PATH sometimes resolves to the Windows Store stub. `py` is
+  reliable (3.13); real installs are under AppData/Local/Programs/Python.
+- Git identity is `daveno79@hotmail.com`, which IS the address on his GitHub
+  account. Verified 2026-08-25; commits attribute correctly. Do not re-raise.
 - Limited hours per week. Prefers steady shippable increments over big rewrites.
 - Wants beginner-level explanation of *why* a step exists, not just the command.
   Explain the concept behind the step. Do not be condescending.
@@ -100,6 +107,15 @@ Outcome mix, which is the funnel's terminal step:
 in some form of relief** - that ratio is the headline funnel metric, and it
 varies by company and product.
 
+Narrower and starker: **monetary relief is 216,402 against 10,642,106 closed
+with explanation only - roughly 1 complaint in 80, or 49 to 1.** That average is
+across all companies, products and years and is useless on its own. The project
+exists to find where it is *not* 1.25%, and to explain why.
+
+Decide and defend: `Closed with non-monetary relief` is 5.8M and spans anything
+from a real fix to a credit-file correction. Whether it counts as a win is a
+modelling choice. Making it silently is the only wrong answer.
+
 **Volume skew:** credit reporting is 11,780,564 of 17.3M (68%). Same shape as
 the GH Archive push dominance, so the fact grain principle below applies.
 
@@ -123,6 +139,26 @@ CSV column names are the human-readable labels - `Date received`,
 `Consumer complaint narrative`, `Timely response?` - not the snake_case names
 the JSON endpoint returns. Bronze normalizes those names only because Delta
 rejects some characters; values stay untouched.
+
+**Two count fields, and one of them lies under a filter.** The JSON response
+carries both `_meta.total_record_count` and `hits.total.value`. Unfiltered they
+are identical, so nothing distinguishes them. Add any filter and
+`_meta.total_record_count` does not move - it is the size of the whole database,
+not the size of the result.
+
+| query | `_meta.total_record_count` | `hits.total.value` |
+|---|---|---|
+| no filter | 17,324,137 | 17,324,137 |
+| one day | 17,324,137 | 18,704 |
+| mortgages, that day | 17,324,137 | 79 |
+
+**Use `hits.total.value`.** Building on `_meta` makes every window report ~17M
+expected, which breaks the row-count check that is the only defence against a
+silently truncated download - a truncated response still returns HTTP 200 and
+valid CSV.
+
+**The CSV has no `has_narrative` column**, though the JSON does. Derive it - and
+note that "empty" means either an empty string or the literal word `None`.
 
 ### The two clocks - the constraint that shapes the whole design
 
