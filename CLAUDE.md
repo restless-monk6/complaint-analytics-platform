@@ -135,6 +135,21 @@ aggregations**, where its facets are genuinely useful and the cap is irrelevant.
 Reaching for adaptive window-splitting means solving a problem the other
 endpoint does not have.
 
+**`format=json` is not a value - it 404s.** JSON is the default; pass `format`
+only when you want `csv`. And the trailing slash on the base URL is load-
+bearing: drop it and the server returns the *HTML website* with HTTP 200, so a
+wrong URL fails as unparseable content rather than as an error status.
+Verified 2026-08-31.
+
+**`size=0` is ignored by the CSV export.** The same params dict can therefore
+be handed to both the count call and the download call unchanged, which is what
+makes comparing their answers a valid completeness check. Verified 2026-08-31.
+
+**`date_received_max` is inclusive.** 2026-08-19 alone = 29,289; 2026-08-20
+alone = 28,690; `19..20` = 57,979, exactly the sum. So chunk day by day with
+`min == max` and step one day - overlapping the endpoints double-counts.
+Verified 2026-08-31.
+
 CSV column names are the human-readable labels - `Date received`,
 `Consumer complaint narrative`, `Timely response?` - not the snake_case names
 the JSON endpoint returns. Bronze normalizes those names only because Delta
@@ -159,6 +174,12 @@ valid CSV.
 
 **The CSV has no `has_narrative` column**, though the JSON does. Derive it - and
 note that "empty" means either an empty string or the literal word `None`.
+
+**Narratives contain literal newlines, so `wc -l` is not a row count.** One day
+of mortgage complaints (2025-08-19) is 353 physical lines but **87 records** -
+30% of rows carry an embedded newline inside the quoted narrative field. The
+55,052-row recent sample hid this because it had almost no narratives. Verify a
+download with a real CSV parser, never a line count.
 
 ### The two clocks - the constraint that shapes the whole design
 
@@ -191,6 +212,22 @@ Three consequences, none optional:
 
 A recent 3-day sample was also **96% credit reporting** (vs 68% across all
 history), so recent-window aggregates say almost nothing about other products.
+
+### The third clock - late arrival (verified 2026-08-31)
+
+A date window keeps growing after the fact. `2026-08-18..20` counted 55,052 on
+2026-08-26 and **86,937 on 2026-08-31 - up 57.9% in five days**, same filter,
+same endpoint. Complaints keep being added under a `date_received` that has
+already passed.
+
+So a daily "pull yesterday, append, done" job keyed on `date_received` silently
+under-reads by more than half. The incremental pull must re-read a trailing
+window, and the row-count check must compare the CSV against a count taken in
+the *same* moment - the truth moves between calls.
+
+Not yet measured: how many days until a window stops growing. Same shape as the
+coverage curve - vary the lag, stop where it flattens. Measure this before
+choosing the trailing-window width.
 
 ### Where the mess actually is - NOT nesting
 
@@ -406,10 +443,24 @@ before ingesting broadly.
 - [x] **Dataset chosen: CFPB Consumer Complaints**, profiled at survey depth
 - [x] Access path verified: CSV export, not JSON paging
 - [x] Publication lag measured - the two clocks above
-- [ ] Repo scaffold rebuilt by hand. In progress: lesson 2 (the API client),
-      steps 1-3 done - endpoints explored, the two count fields
-      distinguished, CSV export confirmed as the pull path. Next: write
-      `src/ingestion/cfpb_client.py`. Nothing written yet.
+- [ ] Repo scaffold rebuilt by hand. In progress: lesson 2 (the API client).
+      `src/ingestion/cfpb_client.py` now holds four working functions -
+      `count` (JSON endpoint, `hits.total.value`), `fetch_csv` (CSV export),
+      `count_csv_rows` (real CSV parse, not `wc -l`), and
+      `fetch_window_verified` (count -> download -> compare, raising only on
+      *fewer* rows than counted). `.venv` + `requests` + `ruff` are set up;
+      lint with `ruff check --select E,F,B src\`. Verified against
+      2026-08-19: 29,289 counted, 29,289 landed, 8.3 MB.
+      Still to do on the client, roughly in order:
+      1. Extract the duplicated params dict into one `_params()` builder -
+         if the count call and the download call ever describe different
+         windows, the verification silently proves nothing.
+      2. Write to `dest.part` and rename on success, so a crash mid-download
+         cannot leave a short file that looks finished.
+      3. A `requests.Session` with a Retry adapter (429 and 5xx only).
+      4. `logging` instead of `print` inside the module.
+      5. Tests: a fixture CSV with a quoted multi-line narrative, asserting
+         `count_csv_rows` returns 2 where the file has 5 lines.
 - [ ] Full profile: company name normalization across full history
 - [ ] Databricks workspace + Unity Catalog dev/prod
 - [ ] Databricks Connect working end to end
@@ -430,7 +481,12 @@ here or in the README, because the two will drift apart within a session.
 
 - **Teach, do not do.** He rebuilds the code himself; explain the concept, show
   the shape, let him type it. Reviewing and critiquing his version is welcome;
-  substituting for it is not. Recorded facts (this file, archived findings) are
+  substituting for it is not.
+- **He is a Python beginner (confirmed 2026-08-31).** Give complete, correct
+  syntax with a line-by-line account of what each piece does and why. He types
+  it, runs it, and hands it back for review - that is the learning, not the
+  looking-up. Skeletons with `...` blanks are too abstract and stall him;
+  withholding syntax just outsources the teaching to Stack Overflow. Recorded facts (this file, archived findings) are
   the exception - maintain those directly. Running something to establish a
   fact is fine; hand the doing back afterwards.
 - **The dataset is settled: CFPB Consumer Complaints, 2026-08-25.** Three
