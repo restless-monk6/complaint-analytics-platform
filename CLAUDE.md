@@ -462,10 +462,15 @@ before ingesting broadly.
       `dest.part` and `os.replace`s it into place, so a crash cannot leave a
       short file at the real name. Re-verified 2026-09-08 against
       2026-08-19: 30,769 counted, 30,769 landed, 9.1 MB, no stale `.part`.
-      Still to do on the client, roughly in order:
-      1. A `requests.Session` with a Retry adapter (429 and 5xx only).
-      2. `logging` instead of `print` inside the module.
-      3. Tests: a fixture CSV with a quoted multi-line narrative, asserting
+      A module-level `requests.Session` now pools the connection, with a
+      Retry adapter limited to 429 and 5xx - client errors like the
+      `format=json` 404 come straight back instead of failing five times
+      slower. `print` is replaced by a module logger using lazy `%s` args;
+      `basicConfig` lives only in the `__main__` block, never in the module.
+      Lint line is now `ruff check --select E,F,B,W,I src\`, plus
+      `ruff format`.
+      Still to do on the client:
+      1. Tests: a fixture CSV with a quoted multi-line narrative, asserting
          `count_csv_rows` returns 2 where the file has 5 lines.
 - [ ] Full profile: company name normalization across full history
 - [ ] Databricks workspace + Unity Catalog dev/prod
