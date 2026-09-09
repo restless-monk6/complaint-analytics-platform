@@ -225,6 +225,11 @@ under-reads by more than half. The incremental pull must re-read a trailing
 window, and the row-count check must compare the CSV against a count taken in
 the *same* moment - the truth moves between calls.
 
+A second reading of the same shape, 2026-09-08: 2026-08-19 alone counted
+29,289 on 2026-08-31 and **30,769 on 2026-09-08 - up 5.1% in eight days**. So
+growth decays but has not stopped 20 days out; a trailing window of a few days
+is not enough.
+
 Not yet measured: how many days until a window stops growing. Same shape as the
 coverage curve - vary the lag, stop where it flattens. Measure this before
 choosing the trailing-window width.
@@ -451,15 +456,16 @@ before ingesting broadly.
       *fewer* rows than counted). `.venv` + `requests` + `ruff` are set up;
       lint with `ruff check --select E,F,B src\`. Verified against
       2026-08-19: 29,289 counted, 29,289 landed, 8.3 MB.
+      A single `_params()` builder now feeds both the count call and the
+      download, so the two can no longer describe different windows and the
+      row-count check silently prove nothing. `fetch_csv` writes to
+      `dest.part` and `os.replace`s it into place, so a crash cannot leave a
+      short file at the real name. Re-verified 2026-09-08 against
+      2026-08-19: 30,769 counted, 30,769 landed, 9.1 MB, no stale `.part`.
       Still to do on the client, roughly in order:
-      1. Extract the duplicated params dict into one `_params()` builder -
-         if the count call and the download call ever describe different
-         windows, the verification silently proves nothing.
-      2. Write to `dest.part` and rename on success, so a crash mid-download
-         cannot leave a short file that looks finished.
-      3. A `requests.Session` with a Retry adapter (429 and 5xx only).
-      4. `logging` instead of `print` inside the module.
-      5. Tests: a fixture CSV with a quoted multi-line narrative, asserting
+      1. A `requests.Session` with a Retry adapter (429 and 5xx only).
+      2. `logging` instead of `print` inside the module.
+      3. Tests: a fixture CSV with a quoted multi-line narrative, asserting
          `count_csv_rows` returns 2 where the file has 5 lines.
 - [ ] Full profile: company name normalization across full history
 - [ ] Databricks workspace + Unity Catalog dev/prod

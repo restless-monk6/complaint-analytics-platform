@@ -1,38 +1,49 @@
 import requests
 import csv
+import os
 
 BASE_URL = (
     "https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/"
 )
 
-
-def count(date_min, date_max):
-    """Return how many complaints..."""
+def _params(date_min, date_max, **extra):
+    """Build the query params shared by the count call and the CSV download.
+    
+    Only presentation options (like format) belong in **extra. Anything that
+    changes *which rows* come back must go through both calls, or the row-count
+    check compares two different questions.
+    """
     params = {
         "date_received_min": date_min,
         "date_received_max": date_max,
         "size": 0,
         "no_aggs": "true",
     }
+    params.update(extra)
+    return params
 
-    response = requests.get(BASE_URL, params=params, timeout=30)
+def count(date_min, date_max):
+    """Return how many complaints the API says are in this window."""
+    response = requests.get(BASE_URL, params=_params(date_min, date_max), timeout=30)
     response.raise_for_status()
     data = response.json()
     return data["hits"]["total"]["value"]
 
+
 def fetch_csv(date_min, date_max, dest):
     """Download this window as CSV to dest. Returns the path written."""
-    params = {
-        "date_received_min": date_min,
-        "date_received_max": date_max,
-        "size": 0,
-        "no_aggs": "true",
-        "format": "csv",
-    }
-    response = requests.get(BASE_URL, params=params, timeout=120)
+       
+    response = requests.get(
+            BASE_URL,
+            params=_params(date_min, date_max, format="csv"),
+            timeout=120,
+    )
+    
     response.raise_for_status()
-    with open(dest, "wb") as f: 
+    tmp = f"{dest}.part"
+    with open(tmp, "wb") as f: 
         f.write(response.content)
+    os.replace(tmp, dest)
     return dest
 
 def count_csv_rows(path):
@@ -69,8 +80,8 @@ def fetch_window_verified(date_min, date_max, dest):
     
     return dest
 
-#if __name__ == "__main__":
-#    print(fetch_window_verified("2026-08-19", "2026-08-19","data/raw/complaints_2026-08-19.csv"))
+
 if __name__ == "__main__":
-    print(count_csv_rows("data/raw/cfpb_sample.csv"))          # 55052
-    print(count("2026-08-18", "2026-08-20"))                   # ~86937
+    print(fetch_window_verified(
+        "2026-08-19", "2026-08-19", "data/raw/complaints_2026-08-19.csv"
+    ))
