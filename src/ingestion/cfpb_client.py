@@ -1,7 +1,8 @@
-import requests
 import csv
-import os
 import logging
+import os
+
+import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
@@ -22,8 +23,10 @@ _RETRY = Retry(
 _SESSION = requests.Session()
 _SESSION.mount("https://", HTTPAdapter(max_retries=_RETRY))
 
+
 def _params(date_min, date_max, **extra):
     """Build the query params shared by the count call and the CSV download.
+
     Only presentation options (like format) belong in **extra. Anything that
     changes *which rows* come back must go through both calls, or the row-count
     check compares two different questions.
@@ -37,6 +40,7 @@ def _params(date_min, date_max, **extra):
     params.update(extra)
     return params
 
+
 def count(date_min, date_max):
     """Return how many complaints the API says are in this window."""
     response = _SESSION.get(BASE_URL, params=_params(date_min, date_max), timeout=30)
@@ -49,9 +53,9 @@ def fetch_csv(date_min, date_max, dest):
     """Download this window as CSV to dest. Returns the path written."""
 
     response = _SESSION.get(
-            BASE_URL,
-            params=_params(date_min, date_max, format="csv"),
-            timeout=120,
+        BASE_URL,
+        params=_params(date_min, date_max, format="csv"),
+        timeout=120,
     )
 
     response.raise_for_status()
@@ -67,6 +71,7 @@ def fetch_csv(date_min, date_max, dest):
     os.replace(tmp, dest)
     return dest
 
+
 def count_csv_rows(path):
     """Return the number of data rows in a CSV, excluding the header."""
     with open(path, newline="", encoding="utf-8") as f:
@@ -77,10 +82,11 @@ def count_csv_rows(path):
             rows += 1
     return rows
 
+
 def fetch_window_verified(date_min, date_max, dest):
     """Download a window and prove the file on disk is complete
 
-    Returns the path written. Raises RuntimeError if the rows are missing:
+    Returns the path written. Raises RuntimeError if the rows are missing.
     """
     expected = count(date_min, date_max)
     logger.info("%s..%s: API counts %s complaints", date_min, date_max, expected)
@@ -114,6 +120,8 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
-    print(fetch_window_verified(
-        "2026-08-19", "2026-08-19", "data/raw/complaints_2026-08-19.csv"
-    ))
+    print(
+        fetch_window_verified(
+            "2026-08-19", "2026-08-19", "data/raw/complaints_2026-08-19.csv"
+        )
+    )
