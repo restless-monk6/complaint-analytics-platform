@@ -469,9 +469,25 @@ before ingesting broadly.
       `basicConfig` lives only in the `__main__` block, never in the module.
       Lint line is now `ruff check --select E,F,B,W,I src\`, plus
       `ruff format`.
-      Still to do on the client:
+      Still to do on the client - not started as of 2026-09-11:
       1. Tests: a fixture CSV with a quoted multi-line narrative, asserting
-         `count_csv_rows` returns 2 where the file has 5 lines.
+         `count_csv_rows` returns 2 where the file has 5 lines. The test
+         exists to stop anyone "simplifying" the record count into a line
+         count - that would make a truncated download report *more* rows
+         than counted, trip the benign late-arrival branch, and return
+         success on a short file. Fixture lives in `tests/fixtures/` and is
+         committed: fixtures are code, not data, and `.gitignore` only
+         excludes `data/`.
+         Decided this session, so it does not get reopened: tests import
+         `ingestion.cfpb_client` via a real editable install, NOT a
+         `sys.path` insert. That needs a root `pyproject.toml` with
+         `[tool.setuptools.packages.find] where = ["src"]`, an empty
+         `src/ingestion/__init__.py`, and `pip install -e .`. It is less
+         code than the path hack, fixes imports for every future test and
+         script, and Asset Bundles ship a wheel built from that same file -
+         so it is on the critical path regardless.
+         Run tests with `python -m unittest discover -s tests -v`. Lint line
+         extends to `ruff check --select E,F,B,W,I src\ tests\`.
 - [ ] Full profile: company name normalization across full history
 - [ ] Databricks workspace + Unity Catalog dev/prod
 - [ ] Databricks Connect working end to end
